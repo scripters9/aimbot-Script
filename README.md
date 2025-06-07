@@ -10,56 +10,50 @@ local TweenService = game:GetService("TweenService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
+--// CORES PARA EFEITO BALADA E ESP
+local COLORS = {
+    Color3.fromRGB(255, 0, 0),
+    Color3.fromRGB(255, 127, 0),
+    Color3.fromRGB(255, 255, 0),
+    Color3.fromRGB(0, 255, 0),
+    Color3.fromRGB(0, 0, 255),
+    Color3.fromRGB(75, 0, 130),
+    Color3.fromRGB(148, 0, 211),
+}
+
 --// UI PRINCIPAL
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "AimbotUI"
 
---// EFEITO DE BRILHO COLORIDO TIPO BALADA POR 10 SEGUNDOS
+--// EFEITO BALADA (flash colorido por 10s)
 do
     local flash = Instance.new("Frame", ScreenGui)
     flash.Size = UDim2.new(1,0,1,0)
-    flash.BackgroundColor3 = Color3.new(1,0,0) -- vermelho inicial
+    flash.BackgroundColor3 = COLORS[1]
     flash.BackgroundTransparency = 1
     flash.ZIndex = 9999
 
-    local colors = {
-        Color3.fromRGB(255, 0, 0),    -- vermelho
-        Color3.fromRGB(255, 127, 0),  -- laranja
-        Color3.fromRGB(255, 255, 0),  -- amarelo
-        Color3.fromRGB(0, 255, 0),    -- verde
-        Color3.fromRGB(0, 0, 255),    -- azul
-        Color3.fromRGB(75, 0, 130),   -- índigo
-        Color3.fromRGB(148, 0, 211),  -- violeta
-    }
-
     local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-
     local startTime = tick()
-    local duration = 10 -- segundos
-
+    local duration = 10
     local function pulseColor()
         local colorIndex = 1
         while tick() - startTime < duration do
-            local nextIndex = colorIndex % #colors + 1
-
-            local tweenIn = TweenService:Create(flash, tweenInfo, {BackgroundTransparency = 0.7, BackgroundColor3 = colors[colorIndex]})
-            local tweenOut = TweenService:Create(flash, tweenInfo, {BackgroundTransparency = 1, BackgroundColor3 = colors[nextIndex]})
-
+            local nextIndex = colorIndex % #COLORS + 1
+            local tweenIn = TweenService:Create(flash, tweenInfo, {BackgroundTransparency = 0.7, BackgroundColor3 = COLORS[colorIndex]})
+            local tweenOut = TweenService:Create(flash, tweenInfo, {BackgroundTransparency = 1, BackgroundColor3 = COLORS[nextIndex]})
             tweenIn:Play()
             tweenIn.Completed:Wait()
-
             tweenOut:Play()
             tweenOut.Completed:Wait()
-
             colorIndex = nextIndex
         end
         flash:Destroy()
     end
-
     coroutine.wrap(pulseColor)()
 end
 
---// FUNÇÃO PARA EXIBIR MENSAGEM ANIMADA
+--// MENSAGEM ANIMADA
 local function showMessage(text, duration, callback)
     local msg = Instance.new("TextLabel", ScreenGui)
     msg.Size = UDim2.new(0, 400, 0, 50)
@@ -89,9 +83,7 @@ local function showMessage(text, duration, callback)
         tweenOut:Play()
         tweenOut.Completed:Wait()
         msg:Destroy()
-        if callback then
-            callback()
-        end
+        if callback then callback() end
     end)
 end
 
@@ -99,7 +91,7 @@ showMessage("By BaconPurple lol", 3, function()
     showMessage("Valeu por testar", 3)
 end)
 
---// BOTÃO DE ATIVAR/DESATIVAR AIMBOT
+--// BOTÃO AIMBOT
 local aimbotOn = false
 local Button = Instance.new("TextButton", ScreenGui)
 Button.Size = UDim2.new(0, 130, 0, 45)
@@ -131,20 +123,17 @@ RunService.RenderStepped:Connect(function()
     FOV_Circle.Position = Vector2.new(view.X / 2, view.Y / 2)
 end)
 
---// Função para encontrar o inimigo mais próximo
+--// Aimbot Função
 local function GetClosestTarget()
     local closest = nil
     local shortest = FOV_RADIUS
-
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(AIM_PART) then
             local part = player.Character[AIM_PART]
             local screenPoint, onScreen = Camera:WorldToViewportPoint(part.Position)
-
             if onScreen then
                 local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
                 local dist = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Magnitude
-
                 if dist < shortest then
                     shortest = dist
                     closest = player
@@ -152,11 +141,9 @@ local function GetClosestTarget()
             end
         end
     end
-
     return closest
 end
 
---// Loop do Aimbot
 RunService.RenderStepped:Connect(function()
     if aimbotOn then
         local target = GetClosestTarget()
@@ -167,7 +154,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
---// TOCAR ANIMAÇÃO DE DANÇA COMPATÍVEL COM R6 (PARA APÓS 10 SEGUNDOS)
+--// Animação de Dança R6
 local function playDanceAnimation()
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local humanoid = char:WaitForChild("Humanoid", 5)
@@ -177,21 +164,19 @@ local function playDanceAnimation()
         local track = humanoid:LoadAnimation(anim)
         track.Looped = true
         track:Play()
-        
-        task.delay(10, function()
-            track:Stop()
-        end)
+        task.delay(10, function() track:Stop() end)
     end
 end
-
 playDanceAnimation()
 
---// ESP COM BARRA DE VIDA (EXIBIR TODOS, SEM SUMIR, COM TRANSPARÊNCIA)
+--// ESP Colorido com Barra de Vida
 local espTable = {}
+local espColorIndex = 1
+local espColorTimer = 0
+local espColorChangeInterval = 0.6
 
 local function createEsp(player)
     if espTable[player] then return end
-
     local function setupChar(char)
         if not char then return end
         local head = char:WaitForChild("Head", 5)
@@ -200,9 +185,9 @@ local function createEsp(player)
 
         local box = Drawing.new("Square")
         box.Visible = true
-        box.Color = Color3.new(1, 0, 0)
+        box.Color = COLORS[1]
         box.Thickness = 2
-        box.Transparency = 0.5 -- semi-transparente
+        box.Transparency = 0.5
         box.Filled = false
 
         local healthBarBg = Drawing.new("Square")
@@ -214,7 +199,7 @@ local function createEsp(player)
 
         local healthBar = Drawing.new("Square")
         healthBar.Visible = true
-        healthBar.Color = Color3.new(0, 1, 0)
+        healthBar.Color = COLORS[1]
         healthBar.Thickness = 0
         healthBar.Filled = true
         healthBar.Transparency = 0.5
@@ -256,15 +241,54 @@ for _, player in ipairs(Players:GetPlayers()) do
 end
 
 Players.PlayerAdded:Connect(function(player)
-    createEsp(player)
+    if player ~= LocalPlayer then
+        createEsp(player)
+    end
 end)
 
 Players.PlayerRemoving:Connect(function(player)
     removeEsp(player)
 end)
 
-RunService.RenderStepped:Connect(function()
+RunService.RenderStepped:Connect(function(dt)
+    espColorTimer = espColorTimer + dt
+    if espColorTimer >= espColorChangeInterval then
+        espColorTimer = 0
+        espColorIndex = espColorIndex % #COLORS + 1
+        for _, esp in pairs(espTable) do
+            esp.box.Color = COLORS[espColorIndex]
+            esp.healthBar.Color = COLORS[espColorIndex]
+        end
+    end
+
     for player, esp in pairs(espTable) do
         local char = esp.character
         local humanoid = esp.humanoid
         local head = esp.head
+        if char and head and humanoid and head.Parent == char then
+            local headPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+            if onScreen then
+                local size = 40
+                esp.box.Size = Vector2.new(size, size)
+                esp.box.Position = Vector2.new(headPos.X - size / 2, headPos.Y - size / 2)
+                esp.box.Visible = true
+
+                local barWidth = size
+                local barHeight = 6
+                local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+
+                esp.healthBarBg.Size = Vector2.new(barWidth, barHeight)
+                esp.healthBarBg.Position = Vector2.new(headPos.X - barWidth / 2, headPos.Y - size / 2 - 10)
+                esp.healthBarBg.Visible = true
+
+                esp.healthBar.Size = Vector2.new(barWidth * healthPercent, barHeight)
+                esp.healthBar.Position = Vector2.new(headPos.X - barWidth / 2, headPos.Y - size / 2 - 10)
+                esp.healthBar.Visible = true
+            else
+                esp.box.Visible = false
+                esp.healthBarBg.Visible = false
+                esp.healthBar.Visible = false
+            end
+        end
+    end
+end)
